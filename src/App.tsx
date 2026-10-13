@@ -73,7 +73,7 @@ function WebGallery({ view, panel, previewOpen, reduced, onFallback, onPreview, 
   const scene = sceneRef;
   const anchors = useRef<HTMLElement[]>([]);
   const currentState = useRef({ view, panel, previewOpen, reduced }); currentState.current = { view, panel, previewOpen, reduced };
-  const drag = useRef({ active: false, x: 0, y: 0, pending: 0, distance: 0, pointer: -1 });
+  const drag = useRef({ active: false, x: 0, y: 0, pending: 0, pendingY: 0, axis: '' as ''|'x'|'y', distance: 0, pointer: -1 });
   const [ready, setReady] = useState(false);
   const items = projects.filter(project => project.featured);
   useEffect(() => {
@@ -112,24 +112,28 @@ function WebGallery({ view, panel, previewOpen, reduced, onFallback, onPreview, 
     role="region" tabIndex={view === 'featured' && !panel && !previewOpen ? 0 : -1}
     aria-label="Featured gallery. Scroll, drag, or use the left and right arrow keys to explore."
     onPointerDown={event => {
-      if (event.button !== 0 || view !== 'featured' || panel || previewOpen) return;
-      drag.current = { active: true, x: event.clientX, y: event.clientY, pending: 0, distance: 0, pointer: event.pointerId };
+      if (!event.isPrimary || event.button !== 0 || view !== 'featured' || panel || previewOpen) return;
+      drag.current = { active: true, x: event.clientX, y: event.clientY, pending: 0, pendingY: 0, axis: '', distance: 0, pointer: event.pointerId };
       scene.current?.grab(event.timeStamp);
       host.current?.classList.add('is-dragging');
     }}
     onPointerMove={event => {
-      if (!drag.current.active) return;
+      if (!drag.current.active || drag.current.pointer !== event.pointerId) return;
       const dx = event.clientX - drag.current.x, dy = event.clientY - drag.current.y;
       drag.current.distance += Math.hypot(dx, dy);
       drag.current.pending += dx;
+      drag.current.pendingY += dy;
       drag.current.x = event.clientX; drag.current.y = event.clientY;
       if (wasDrag(drag.current.distance)) {
+        if (!drag.current.axis) drag.current.axis = (event.pointerType === 'touch' || window.innerWidth < 768) && Math.abs(drag.current.pendingY) > Math.abs(drag.current.pending) ? 'y' : 'x';
         if (!host.current?.hasPointerCapture(event.pointerId)) host.current?.setPointerCapture(event.pointerId);
-        scene.current?.dragBy(-drag.current.pending, event.timeStamp);
+        scene.current?.dragBy(-(drag.current.axis === 'y' ? drag.current.pendingY : drag.current.pending), event.timeStamp);
         drag.current.pending = 0;
+        drag.current.pendingY = 0;
       }
     }}
     onPointerUp={event => {
+      if (event.pointerId !== drag.current.pointer) return;
       drag.current.active = false; host.current?.classList.remove('is-dragging');
       scene.current?.release(event.timeStamp, !wasDrag(drag.current.distance));
       if (host.current?.hasPointerCapture(event.pointerId)) host.current.releasePointerCapture(event.pointerId);
@@ -152,7 +156,6 @@ function WebGallery({ view, panel, previewOpen, reduced, onFallback, onPreview, 
 }
 
 export function App() {
-  const desktop = useMedia('(min-width: 768px)');
   const reduced = useReducedMotion();
   // Explicit HTML mode is also useful for validating the WebGL fallback.
   const [fallback, setFallback] = useState(() => new URLSearchParams(location.search).get('render') === 'html');
@@ -161,6 +164,13 @@ export function App() {
   const [selectedProject,setSelectedProject] = useState<Project|null>(null);
   const [effectsFallback,setEffectsFallback] = useState(false);
   const scene = useRef<PortfolioScene | null>(null);
+  const panelDrag = useRef({ id: -1, x: 0, y: 0, dx: 0, dy: 0, distance: 0, axis: '' as ''|'x'|'y' });
+  useEffect(() => {
+    const cancel = () => { if(panelDrag.current.id>=0){panelDrag.current.id=-1;scene.current?.release(performance.now(),true);} };
+    const visibility = () => { if(document.hidden)cancel(); };
+    cancel();window.addEventListener('blur',cancel);document.addEventListener('visibilitychange',visibility);
+    return () => {cancel();window.removeEventListener('blur',cancel);document.removeEventListener('visibilitychange',visibility);};
+  },[panel]);
   const [previewFlying,setPreviewFlying] = useState(false);
   const [previewPhase,setPreviewPhase] = useState<'idle'|'opening'|'open'|'closing'>('idle');
   const phase = useRef(previewPhase);
@@ -178,7 +188,7 @@ export function App() {
   const returnFocus = useRef<HTMLElement | null>(null);
   const mobileScroll = useRef(0);
   const featured = projects.filter(project => project.featured);
-  const htmlMode = !desktop || fallback || featured.length < 3;
+  const htmlMode = fallback || featured.length < 3;
   const overlayOpen=!!panel || !!selectedProject;
   const overlayActive=useRef(overlayOpen); overlayActive.current=overlayOpen;
   const finishPreview = () => {
@@ -298,7 +308,20 @@ export function App() {
       <button className="nav-button" ref={contactButton} onClick={() => openPanel('contact', contactButton.current)} aria-haspopup="dialog" aria-expanded={panel === 'contact'}>CONTACT <span className="contact-dot" /></button>
     </footer>
 
-    {panel && <div className={`panel ${htmlMode || effectsFallback ? 'panel-html' : ''} ${panel === 'contact' ? 'contact-panel' : ''}`} ref={dialog} role="dialog" aria-modal="true" aria-labelledby="panel-title" tabIndex={-1}>
+    {panel && <div className={`panel ${htmlMode || effectsFallback ? 'panel-html' : ''} ${panel === 'contact' ? 'contact-panel' : ''}`} ref={dialog} role="dialog" aria-modal="true" aria-labelledby="panel-title" tabIndex={-1}
+      onPointerDown={event => {
+        if (panel !== 'contact' || view !== 'featured' || !event.isPrimary || event.button !== 0 || (event.target as HTMLElement).closest('button,a')) return;
+        event.preventDefault();
+        panelDrag.current = {id:event.pointerId,x:event.clientX,y:event.clientY,dx:0,dy:0,distance:0,axis:''};scene.current?.grab(event.timeStamp);
+      }}
+      onPointerMove={event => {
+        const d=panelDrag.current;if(d.id!==event.pointerId)return;
+        const dx=event.clientX-d.x,dy=event.clientY-d.y;d.x=event.clientX;d.y=event.clientY;d.dx+=dx;d.dy+=dy;d.distance+=Math.hypot(dx,dy);
+        if(wasDrag(d.distance)){d.axis ||= Math.abs(d.dy)>Math.abs(d.dx)?'y':'x';event.currentTarget.setPointerCapture(event.pointerId);scene.current?.dragBy(-(d.axis==='y'?d.dy:d.dx),event.timeStamp);d.dx=0;d.dy=0;}
+      }}
+      onPointerUp={event => {const d=panelDrag.current;if(d.id!==event.pointerId)return;d.id=-1;scene.current?.release(event.timeStamp,!wasDrag(d.distance));}}
+      onPointerCancel={event => {if(panelDrag.current.id===event.pointerId){panelDrag.current.id=-1;scene.current?.release(event.timeStamp,true);}}}
+      onLostPointerCapture={event => {if(panelDrag.current.id===event.pointerId){panelDrag.current.id=-1;scene.current?.release(event.timeStamp,true);}}}>
       <div className="panel-top"><span>{profile.name}</span>{panel === 'profile' && <button className="nav-button" onClick={() => setPanel(null)} aria-label="Close panel">CLOSE <span aria-hidden="true">×</span></button>}</div>
       {panel === 'contact' && <button className="nav-button contact-close" onClick={() => setPanel(null)} aria-label="Close panel">CLOSE <span aria-hidden="true">×</span></button>}
       {(htmlMode || effectsFallback) && <div className="css-ring" aria-hidden="true" />}
@@ -306,6 +329,7 @@ export function App() {
         {panel === 'profile' && <span className="eyebrow">A LITTLE ABOUT ME</span>}
         <h2 id="panel-title">{panel === 'profile' ? profile.title : collection.contactTitle}</h2>
         <p>{panel === 'profile' ? profile.intro : collection.contactIntro}</p>
+        {panel === 'contact' && <span className="collection-count">{projects.length} REIMAGINED CLASSICS</span>}
         {panel === 'profile' && <span className="profile-note">{profile.note}</span>}
         {panel === 'contact' && profile.email && <a className="contact-email" href={`mailto:${profile.email}`}>{profile.email}<span>↗</span></a>}
         <div className="social-links">

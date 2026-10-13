@@ -6,6 +6,7 @@ import { GalleryMotion } from './GalleryMotion';
 import { PostEffects } from './PostEffects';
 import type { Project } from '../content';
 import { assetUrl } from '../assets';
+import { galleryLayout } from './layout.mjs';
 
 export type SceneMode = 'featured' | 'full';
 export type PanelMode = 'profile' | 'contact' | null;
@@ -80,6 +81,11 @@ export class PortfolioScene {
       const card: Card = { mesh, poster, label, loaded: false, attempted: false, starting: false, visible: false, bounds: { left: 0, top: 0, width: 0, height: 0 }, columns: new Float64Array(41 * 4) };this.cards.push(card);
       loader.load(assetUrl(project.cover), texture => {
         if (this.disposed) { texture.dispose();return; }texture.colorSpace = THREE.SRGBColorSpace;texture.anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
+        // Keep the original for HTML detail views, but bound mobile GPU memory.
+        if ((this.width < 768 || window.matchMedia('(pointer: coarse)').matches) && texture.image.width > 1024) {
+          const image=texture.image,poster=document.createElement('canvas');poster.width=1024;poster.height=Math.round(image.height*1024/image.width);
+          const context=poster.getContext('2d');if(context){context.drawImage(image,0,0,poster.width,poster.height);texture.image=poster;texture.needsUpdate=true;}
+        }
         card.poster.dispose();card.poster = texture;card.loaded = true;if (!card.videoTexture) mesh.material.uniforms.map.value = texture;this.updateAspect(card, texture.image.width, texture.image.height);
       }, undefined, () => { /* Keep the procedural poster on failure. */ });
     });
@@ -94,6 +100,7 @@ export class PortfolioScene {
     this.renderer.debug.onShaderError = () => { this.postFailed = true; };
     this.observer = new ResizeObserver(this.resize);this.observer.observe(host);
     document.addEventListener('visibilitychange', this.onVisibility);window.addEventListener('pointermove', this.onMouse);
+    window.addEventListener('pointerdown', this.onMouse);window.addEventListener('pointerup',this.onTouchEnd);window.addEventListener('pointercancel',this.onTouchEnd);
     document.documentElement.addEventListener('pointerleave', this.onMouseLeave);window.addEventListener('blur', this.onBlur);
     document.fonts.ready.then(() => { if (this.disposed) return;this.cards.forEach((card, i) => { const label = this.makeLabel(this.projects[i]);card.label.dispose();card.label = label;card.mesh.material.uniforms.label.value = label; }); });
     this.resize();this.start();onReady();
@@ -128,9 +135,11 @@ export class PortfolioScene {
   private resize = () => {
     if (this.disposed) return;
     const oldGap = this.gap;this.width = Math.max(1, this.host.clientWidth);this.height = Math.max(1, this.host.clientHeight);
+    const layout = galleryLayout(this.width,this.height);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,layout.pixelRatioLimit));
     this.renderer.setSize(this.width, this.height);this.camera.aspect = this.width / this.height;this.camera.updateProjectionMatrix();
     this.halfH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 41.18;this.halfW = this.halfH * this.camera.aspect;
-    this.cardH = this.halfH * 2 * .435;this.cardW = this.cardH * 1.7;this.gap = this.cardW + this.halfW * 2 / 150;this.movement.maxInputSpeed = this.halfW * 2 * 2.5;
+    this.cardH = this.halfH * 2 * layout.cardHeight / this.height;this.cardW = this.cardH * 1.7;this.gap = this.cardW + this.halfW * 2 / (layout.compact ? 35 : 150);this.movement.maxInputSpeed = this.halfW * 2 * 2.5;
     if (this.initialized) { const ratio = this.gap / oldGap;this.movement.reset(this.movement.position * ratio);this.flightX *= ratio; }this.initialized = true;
     this.floor.position.y = -this.cardH / 2 - this.halfH * .06;this.floor.material.uniforms.cell.value = this.halfH * .22;this.floor.material.uniforms.halfW.value = this.halfW;this.camera.updateMatrixWorld();
     try { this.post?.resize(this.width, this.height, this.renderer); } catch { this.disableEffects(); }
@@ -163,7 +172,8 @@ export class PortfolioScene {
     this.flyer.material.uniforms.map.value = this.heroTexture;this.host.classList.add('flight-active');gsap.killTweensOf(this.motion);this.motion.dim = 1;this.motion.gallery = 1;this.motion.hole = 0;return this.flight;
   }
   finishFlight() { if(this.disposed)return;this.flight = null;this.heroTexture?.dispose();this.heroTexture = null;this.host.classList.remove('flight-active');this.flyer.visible = false;this.setState(this.view, this.panel, this.previewOpen); }
-  private onMouse = (event: PointerEvent) => { if (event.pointerType === 'touch') return;const bounds = this.host.getBoundingClientRect();this.mouse = pointerPosition(event.clientX, event.clientY, bounds);if (!this.previewOpen) this.post?.pointer(event.clientX - bounds.left, event.clientY - bounds.top); };
+  private onMouse = (event: PointerEvent) => { if (!event.isPrimary) return;const bounds = this.host.getBoundingClientRect();this.mouse = pointerPosition(event.clientX, event.clientY, bounds);if (!this.previewOpen) this.post?.pointer(event.clientX - bounds.left, event.clientY - bounds.top); };
+  private onTouchEnd = (event: PointerEvent) => { if (event.pointerType === 'touch') this.onMouseLeave(); };
   private onMouseLeave = () => { this.mouse = { x: 0, y: 0 };this.post?.resetPointer(); };
   private onBlur = () => { this.onMouseLeave();this.movement.stop(); };
   private onContextLost = (event: Event) => { event.preventDefault();this.contextLost = true;cancelAnimationFrame(this.frame);this.fail(); };
@@ -224,6 +234,7 @@ export class PortfolioScene {
   dispose() {
     this.disposed = true;cancelAnimationFrame(this.frame);this.observer.disconnect();gsap.killTweensOf(this.motion);
     document.removeEventListener('visibilitychange', this.onVisibility);window.removeEventListener('pointermove', this.onMouse);document.documentElement.removeEventListener('pointerleave', this.onMouseLeave);window.removeEventListener('blur', this.onBlur);this.renderer.domElement.removeEventListener('webglcontextlost', this.onContextLost);
+    window.removeEventListener('pointerdown',this.onMouse);window.removeEventListener('pointerup',this.onTouchEnd);window.removeEventListener('pointercancel',this.onTouchEnd);
     this.cards.forEach(c => { c.poster.dispose();c.label.dispose();c.videoTexture?.dispose();if (c.video) { c.video.pause();c.video.removeAttribute('src');c.video.load(); }c.mesh.geometry.dispose();c.mesh.material.dispose(); });
     this.heroTexture?.dispose();this.flyer.geometry.dispose();this.flyer.material.dispose();this.floor.geometry.dispose();this.floor.material.dispose();this.post?.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.host.classList.remove('flight-active');
   }
