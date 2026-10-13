@@ -1,5 +1,7 @@
 # Mobile gallery and ring update — 2026-10-13
 
+Subsequent revision: the floating drop decorations were removed from both mobile and desktop at the user's request. Ring refraction, movement, dimensions and HTML introduction remain. The notes and recording below describe the initial version before that removal.
+
 ## Changes
 
 - Mobile and desktop now use the same WebGL gallery, continuous detail transition, mouse/touch lens and refractive ring. HTML is retained as the fallback instead of being selected automatically below 768px.
