@@ -1,4 +1,4 @@
-# Personal portfolio
+# NAILONG — Reimagined Classics
 
 Live site: https://icmmme.github.io/nailong-portfolio/
 
@@ -10,7 +10,15 @@ GitHub repository: https://github.com/icmmme/nailong-portfolio
 
 本地校验部署构建：`npm run build -- --base=/nailong-portfolio/`。QA 截图、录屏、临时脚本、依赖和本地环境文件不提交至仓库。
 
-参考 Jesper Landberg 的视觉交互制作的独立个人作品集。React、Vite、TypeScript、Three.js、GSAP；当前展示从 `D:\demo\nailong-art-20\交付_20张` 导入的 20 张奶龙 / 奶蛙名画及对应简介。
+使用 React、Vite、TypeScript、Three.js 和 GSAP 制作的交互式图集，展示 20 张奶龙 / 奶蛙改编名画及英文简介。
+
+## 参考与素材来源
+
+主要设计参考：[Jesper Landberg — Portfolio](https://jesperlandberg.com/)。本项目以其作品集为视觉与交互复刻目标，围绕黑色背景、四角导航、弯曲作品画廊、Featured / Full 切换、鼠标流动效果和折射圆环进行实现。
+
+在此基础上，当前版本使用 NAILONG 图集内容，增加图片详情预览，并将 Contact 圆环内的文字改为抽象的图集介绍。实现采用 React 管理页面状态、Three.js 渲染画廊与后处理、GSAP 编排转场；文字和按钮保留为可访问的 HTML。
+
+图像素材来源：[Naiwa Art Universe](https://nailong-studio.github.io/NaiLong-Universe/)。每件作品的预览保留来源链接，原始素材记录与校验值见 `docs/nailong/`。
 
 ## 当前图集
 
@@ -48,7 +56,7 @@ npm run build
 npm run preview
 ```
 
-生产产物位于 `dist/`，可作为静态站点部署。无需数据库、账号或后端；本次仅交付本地版本。
+生产产物位于 `dist/`，已通过 GitHub Pages 发布。无需数据库、账号或后端。
 
 ## 换成你的内容
 
@@ -100,6 +108,4 @@ npm run preview
 
 测试覆盖循环、拖动阈值、坐标边界、60/144Hz 跟手与滑行、反向输入、旧惯性、速度上限、曲面边缘和展开缓动。浏览器验证记录见 `VALIDATION.md`，截图与动画记录在 `screenshots/`。
 
-本轮借鉴只读本地参考工程 `C:\Users\mmk\project_A\nailong-gallery` 的曲面、运动控制、展开缓动及后处理机制，保留当前中文内容与数据配置，没有复制参考工程字体。Prompt 写法和继续调校的示例见 `PROMPT_GUIDE.md`。
-
-圆环和画廊是独立重建的视觉实现，未使用参考站源代码。正式作品素材、联系方式与字体可替换后继续微调视觉。
+Prompt 写法和继续调校的示例见 `PROMPT_GUIDE.md`。图像、简介及联系方式可以通过内容配置继续替换。
