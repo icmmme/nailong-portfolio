@@ -23,7 +23,7 @@ for (const record of records) {
   const original = await readFile(new URL(`../public${project.cover}`, import.meta.url));
   assert.equal(createHash('sha256').update(original).digest('hex'), record.SHA256);
   if (baseURL) {
-    const response = await fetch(new URL(project.cover, baseURL));
+    const response = await fetch(new URL(project.cover.replace(/^\//, ''), baseURL));
     assert.equal(response.status, 200);
     assert.match(response.headers.get('content-type') ?? '', /image\/jpeg/);
     const served = Buffer.from(await response.arrayBuffer());
