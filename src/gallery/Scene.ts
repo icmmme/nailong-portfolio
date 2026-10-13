@@ -173,8 +173,8 @@ export class PortfolioScene {
   }
   finishFlight() { if(this.disposed)return;this.flight = null;this.heroTexture?.dispose();this.heroTexture = null;this.host.classList.remove('flight-active');this.flyer.visible = false;this.setState(this.view, this.panel, this.previewOpen); }
   private onMouse = (event: PointerEvent) => { if (!event.isPrimary) return;const bounds = this.host.getBoundingClientRect();this.mouse = pointerPosition(event.clientX, event.clientY, bounds);if (!this.previewOpen) this.post?.pointer(event.clientX - bounds.left, event.clientY - bounds.top); };
-  private onTouchEnd = (event: PointerEvent) => { if (event.pointerType === 'touch') this.onMouseLeave(); };
-  private onMouseLeave = () => { this.mouse = { x: 0, y: 0 };this.post?.resetPointer(); };
+  private onTouchEnd = (event: PointerEvent) => { if (event.pointerType === 'touch') this.onMouseLeave(event); };
+  private onMouseLeave = (event?: PointerEvent) => { this.mouse = { x: 0, y: 0 };if(event?.pointerType==='touch')this.post?.releasePointer();else this.post?.resetPointer(); };
   private onBlur = () => { this.onMouseLeave();this.movement.stop(); };
   private onContextLost = (event: Event) => { event.preventDefault();this.contextLost = true;cancelAnimationFrame(this.frame);this.fail(); };
   private onVisibility = () => { if (document.hidden) { cancelAnimationFrame(this.frame);this.frame = 0;this.movement.stop();this.post?.resetPointer();this.cards.forEach(c => { c.video?.pause();c.visible = false;c.attempted = false; }); } else this.start(); };

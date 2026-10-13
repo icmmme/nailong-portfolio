@@ -74,6 +74,7 @@ export class PostEffects{
   pointer(x:number,y:number){this.x=x;this.y=y;if(!this.seen){this.sx=x;this.sy=y;this.seen=true;}}
   resize(w:number,h:number,renderer:THREE.WebGLRenderer){this.width=w;this.height=h;const layout=galleryLayout(w,h),ratio=renderer.getPixelRatio();this.target.setSize(w*ratio,h*ratio);const th=Math.max(1,Math.round(256*h/w));this.trails.forEach(t=>{t.texture.type=renderer.extensions.has('EXT_color_buffer_float')?THREE.HalfFloatType:THREE.UnsignedByteType;t.setSize(256,th);renderer.setRenderTarget(t);renderer.clear();});renderer.setRenderTarget(null);this.post.uniforms.aspect.value.set(w/h,1);this.post.uniforms.radius.value=layout.ringRadius;this.post.uniforms.band.value=layout.ringBand;this.post.uniforms.compact.value=layout.compact?1:0;this.post.uniforms.texel.value.set(1/256,1/th);this.brush.uniforms.texel.value.set(1/256,1/th);this.brush.uniforms.aspect.value=w/h;}
   resetPointer(){this.seen=false;this.ink=0;}
+  releasePointer(){this.x=this.sx;this.y=this.sy;this.seen=false;}
   render(renderer:THREE.WebGLRenderer,scene:THREE.Scene,camera:THREE.Camera,dt:number,hole:number,reduced=false,allowPointer=true){
     if(!reduced)this.post.uniforms.time.value+=dt;this.post.uniforms.hole.value=hole;
     this.sx+=(this.x-this.sx)*(1-Math.exp(-7*dt));this.sy+=(this.y-this.sy)*(1-Math.exp(-7*dt));
