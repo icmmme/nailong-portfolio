@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.vite/
+*.log
+.qa/
+screenshots/
+.env
+.env.*

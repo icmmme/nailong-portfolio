@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <defs><linearGradient id="shade"><stop stop-color="#e5e7d7"/><stop offset="1" stop-color="#899580"/></linearGradient></defs>
+  <rect width="1200" height="900" fill="#e9e9de"/>
+  <g font-family="Arial,sans-serif" fill="#28382b"><text x="60" y="62" font-size="16" letter-spacing="2">FORMA — A STUDY OF SPACE</text><text x="1060" y="62" font-size="16">02 / 02</text><text x="55" y="205" font-size="120" letter-spacing="-6">Quiet by design.</text></g>
+  <rect x="60" y="270" width="1080" height="510" fill="#9da98f"/>
+  <path d="M140 780V505Q305 275 470 505V780" fill="#d4d9c5"/>
+  <path d="M200 780V535Q305 365 410 535V780" fill="#3d503e"/>
+  <path d="M540 780L940 370H1100V780" fill="url(#shade)"/>
+  <g stroke="#859177" stroke-width="3"><path d="M580 745H1100M620 705H1100M660 665H1100M700 625H1100M740 585H1100M780 545H1100M820 505H1100M860 465H1100M900 425H1100"/></g>
+  <g font-family="Arial,sans-serif" fill="#57634e" font-size="15"><text x="60" y="843">FORM / LIGHT / MATERIAL</text><text x="925" y="843">CONCEPT PROJECT</text></g>
+</svg>
